@@ -104,10 +104,14 @@ class Favorites {
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ), 10, 1 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_styles' ), 10, 1 );
 
-		//wp_localize_script( 'enqueue_scripts', array($this, 'ajax_object'), array( 'ajax_url' => admin_url( 'admin-ajax.php' ) ) );
-		add_shortcode( 'my_favorites', array($this, 'my_favorites_form') );
-		add_action('wp_ajax_add_to_my_favorites', array($this, 'add_to_my_favorites'));
-		add_action('wp_ajax_nopriv_add_to_my_favorites', array($this, 'add_to_my_favorites'));
+		add_shortcode( 'as_my_favorites', array($this, 'my_favorites_form') );
+		add_shortcode( 'as_my_favorites_items', array($this, 'my_favorites_items_list') );
+		
+		add_filter('the_content', array($this, 'add_shortcode_on_every_page'));	// Hooks shortcode in "the_content"
+
+
+		add_action('wp_ajax_add_to_user_favorites', array($this, 'add_to_user_favorites'));
+		add_action('wp_ajax_nopriv_add_to_user_favorites', array($this, 'add_to_user_favorites'));
 
 
 		// Load API for generic admin functions
@@ -304,30 +308,69 @@ class Favorites {
 	    $this->get_favorites_button();
 	}
 
-	function add_to_my_favorites() {
-		$userId = $_POST['id_user'];
-		$idFavorites = $_POST['id_favorites'];
+	function add_to_user_favorites() {
+		$idUser = $_POST['id_user'];
+		$idFavorites = ($_POST['id_favorites']);
+		$metaKey = "as_my_favorites";
 
-		$metaID = update_post_meta($idFavorites, 'user_id', $userId); 	// Return : TRUE | FALSE | Meta_id
-		
-		if($metaID === TRUE ||  $metaID === FALSE) {			// If Meta Key Already Exists
-			if($metaID === TRUE ) {								// If Meta Data Updated
-				$msg = "Data Updated Sucessfully.";
-			} else {
-				$msg = "Data not Updated.";						// If Meta Data not Updated 
+		$arrExistingMetaVals  = get_user_meta($idUser, $metaKey);		// Get all existing values from Meta Key
+
+		if(in_array($idFavorites, $arrExistingMetaVals)) {				// If value already exists in Meta key
+
+			$checkDeleted = delete_user_meta( $idUser, $metaKey, $idFavorites );	// Remove provided (only) value from Meta Key
+
+			if($checkDeleted === TRUE) {
+				$status = 2;
+				$msg = "Removed from favorites";
 			}
-		} else {
-			$msg = "Data Added Sucessfully";					// If Meta key was not present previosly, now added sucessfully
-		}
+		} else {														// If value not exists
+			$checkMetaAdded = add_user_meta($idUser, $metaKey, $idFavorites);	// Add new value in Meta Key
+
+			if ($checkMetaAdded) {
+				$status = 1;
+				$msg = "Added to favorites";
+			}
+		}		
 
 		$response = array(
-					'status' => $metaID
-					,'msg'	=> $msg
+						'status' 		=> $status
+						,'msg'			=> $msg
+						,'effected_id' 	=> $idFavorites
 					);
 
 		echo json_encode($response);
 
 		wp_die(); 
+	}
+
+	public function add_shortcode_on_every_page($content) {
+		$shortcode =  do_shortcode( '[as_my_favorites]' );
+		$shortcode .=  do_shortcode( '[as_my_favorites_items]' );
+		$newContent = $content . $shortcode;
+		return $newContent;
+	}
+
+
+	public function my_favorites_items_list() {
+		if(is_user_logged_in()) { 	// user loged in 
+			$arrAllFavoriteItems = get_user_meta(get_current_user_id(), 'as_my_favorites');
+
+			echo '<ul class="favorites-list">';
+				foreach ($arrAllFavoriteItems as $itemID) {
+					if(get_post_status($itemID) === 'publish') {
+						echo '<li>';
+						echo '<a href = "' . esc_url(get_the_permalink($itemID)) . '" title = "' . get_the_title($itemID) . '">';
+						echo esc_html_e(get_the_title($itemID));
+						echo '</a>';
+						echo '</li>';
+					}
+					
+				}
+			echo '</ul>';
+
+		} else {					// user not loged in
+			echo '<p>Please <a href="' . get_bloginfo('url') . '/login/">login</a> to view your favorites. </p>';
+		}
 	}
 	
 }
