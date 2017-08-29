@@ -28,6 +28,13 @@ Installing "As WP Favorites" can be done either by searching for "As Wp Favorite
 2. Description of second screenshot named screenshot-2
 3. Description of third screenshot named screenshot-3
 
+== Shortcodes ==
+1. Display "Add to favorites" button
+	['as_my_favorites'] 
+	
+2. Display list of all favorites
+	['as_my_favorites_items']
+
 == Changelog ==
 
 = 1.0 =
