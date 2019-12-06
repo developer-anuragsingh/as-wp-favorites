@@ -1,6 +1,5 @@
 # as-wp-favorites
 Contributors: anurag-singh
-Donate link: http://www.anurag-singh.me/donate
 Tags: wordpress, plugin, my favorites, favorite 
 Requires at least: 3.9
 Tested up to: 4.0
